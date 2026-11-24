@@ -6,8 +6,7 @@ import cv2
 from camera import Camera
 from face_detector import FaceDetector, draw_landmarks
 from metrics import calculate_eye_metrics, extract_blendshapes
-
-EAR_THRESHOLD = 0.15
+from eye_monitor import classify_eyes
 
 
 def main():
@@ -103,24 +102,20 @@ def main():
                         f"R: {right_ear:.3f}"
                     )
 
-                    left_closed = left_ear < EAR_THRESHOLD
-                    right_closed = right_ear < EAR_THRESHOLD
+                    eye_status = classify_eyes(
+                        left_ear,
+                        right_ear,
+                        blendshapes
+                    )
 
-                    if left_closed and right_closed:
-                        eye_status = "Eyes closed"
+                    if eye_status == "Eyes closed":
                         eye_color = (0, 0, 255)
 
-                    elif left_closed:
-                        eye_status = "Left eye closed"
-                        eye_color = (0, 255, 255)
-
-                    elif right_closed:
-                        eye_status = "Right eye closed"
-                        eye_color = (0, 255, 255)
+                    elif eye_status == "Eyes open":
+                        eye_color = (0, 255, 0)
 
                     else:
-                        eye_status = "Eyes open"
-                        eye_color = (0, 255, 0)
+                        eye_color = (0, 255, 255)
 
                 draw_landmarks(frame, landmarks)
 
