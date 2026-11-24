@@ -8,6 +8,7 @@ from camera import Camera
 from face_detector import FaceDetector, draw_landmarks
 from metrics import calculate_eye_metrics, extract_blendshapes
 from eye_monitor import classify_eyes, EyeMonitor, CRITICAL_DURATION
+from alarm import Alarm
 
 def main():
     parser = argparse.ArgumentParser(description="DriveGuard")
@@ -32,9 +33,13 @@ def main():
 
     face_detector = None
     eye_monitor = EyeMonitor()
+    alarm = None
 
     try:
         face_detector = FaceDetector()
+
+        if args.video is None:
+            alarm = Alarm()
 
         width, height = camera.get_resolution()
         source_fps = camera.get_fps()
@@ -166,6 +171,12 @@ def main():
                     )
 
             monitor_status = eye_monitor.status
+
+            if alarm is not None:
+                alarm.update(
+                    monitor_status,
+                    timestamp
+                )
 
             if monitor_status == "CRITICAL":
                 monitor_color = (0, 0, 255)
@@ -306,6 +317,9 @@ def main():
         print(f"Error: {error}")
 
     finally:
+        if alarm is not None:
+            alarm.close()
+
         event = eye_monitor.finish_closure(interrupted=True)
 
         if event is not None:
