@@ -1,4 +1,5 @@
 EAR_THRESHOLD = 0.15
+EAR_PARTIAL_THRESHOLD = 0.10
 
 BLINK_OPEN_THRESHOLD = 0.35
 BLINK_CLOSED_THRESHOLD = 0.65
@@ -16,6 +17,12 @@ def classify_eye(ear, blink_score):
 
     if (
         ear >= EAR_THRESHOLD
+        and blink_score < BLINK_CLOSED_THRESHOLD
+    ):
+        return "OPEN"
+
+    if (
+        ear >= EAR_PARTIAL_THRESHOLD
         and blink_score <= BLINK_OPEN_THRESHOLD
     ):
         return "OPEN"
@@ -51,11 +58,11 @@ def classify_eyes(left_ear, right_ear, blendshapes):
 MIN_BLINK_DURATION = 0.08
 MAX_BLINK_DURATION = 0.40
 
-WARNING_DURATION = 0.70
-CRITICAL_DURATION = 1.20
+WARNING_DURATION = 2.00
+CRITICAL_DURATION = 5.50
 
 MAX_FRAME_GAP = 0.35
-MAX_UNCERTAIN_DURATION = 0.20
+MAX_UNCERTAIN_DURATION = 0.75
 
 
 class EyeMonitor:
@@ -133,10 +140,22 @@ class EyeMonitor:
             self.closed_seconds += elapsed
 
         if eye_status == "Eye state uncertain":
-            if self.closure_active and self.uncertain_since is None:
-                self.uncertain_since = timestamp
+            if self.closure_active:
+                if self.uncertain_since is None:
+                    self.uncertain_since = timestamp
 
-            self.status = "UNCERTAIN"
+                if self.closed_seconds >= CRITICAL_DURATION:
+                    self.status = "CRITICAL"
+
+                elif self.closed_seconds >= WARNING_DURATION:
+                    self.status = "WARNING"
+
+                else:
+                    self.status = "UNCERTAIN"
+
+            else:
+                self.status = "UNCERTAIN"
+
             return event
 
         self.uncertain_since = None

@@ -7,7 +7,7 @@ from datetime import datetime
 from camera import Camera
 from face_detector import FaceDetector, draw_landmarks
 from metrics import calculate_eye_metrics, extract_blendshapes
-from eye_monitor import classify_eyes, EyeMonitor
+from eye_monitor import classify_eyes, EyeMonitor, CRITICAL_DURATION
 
 def main():
     parser = argparse.ArgumentParser(description="DriveGuard")
@@ -145,16 +145,24 @@ def main():
                 else:
                     event_time = datetime.now().strftime("%H:%M:%S")
 
+                severity = (
+                    "CRITICAL"
+                    if duration >= CRITICAL_DURATION
+                    else "WARNING"
+                )
+
                 if interrupted:
                     print(
-                        f"[{event_time}] - Eye closure observed for "
-                        f"{duration:.2f}s before tracking was interrupted"
+                        f"[{event_time}] [{severity}] - "
+                        f"Eye closure observed for {duration:.2f}s "
+                        f"(end unconfirmed)"
                     )
 
                 else:
                     print(
-                        f"[{event_time}] - Driver had eyes closed "
-                        f"for {duration:.2f}s"
+                        f"[{event_time}] [{severity}] - "
+                        f"Driver's eyes were closed for "
+                        f"approximately {duration:.2f}s"
                     )
 
             monitor_status = eye_monitor.status
@@ -310,9 +318,16 @@ def main():
             else:
                 event_time = datetime.now().strftime("%H:%M:%S")
 
+            severity = (
+                "CRITICAL"
+                if duration >= CRITICAL_DURATION
+                else "WARNING"
+            )
+
             print(
-                f"[{event_time}] - Eye closure observed for "
-                f"{duration:.2f}s before monitoring stopped"
+                f"[{event_time}] [{severity}] - "
+                f"Eye closure observed for {duration:.2f}s "
+                f"(monitoring stopped)"
             )
 
         camera.release()
