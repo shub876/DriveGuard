@@ -1,10 +1,10 @@
-
 import argparse
 import time
 
 import cv2
 
 from camera import Camera
+from face_detector import FaceDetector, draw_landmarks
 
 
 def main():
@@ -28,7 +28,11 @@ def main():
         print(f"Error: {error}")
         return
 
+        face_detector = None
+
     try:
+        face_detector = FaceDetector()
+
         width, height = camera.get_resolution()
         source_fps = camera.get_fps()
 
@@ -52,6 +56,19 @@ def main():
                     print("Error: Could not read frame.")
                 break
 
+            result = face_detector.detect(frame)
+
+            if result.face_landmarks:
+                landmarks = result.face_landmarks[0]
+
+                draw_landmarks(frame, landmarks)
+
+                face_status = f"Face detected | Landmarks: {len(landmarks)}"
+                face_color = (0, 255, 0)
+
+            else:
+                face_status = "No face detected"
+                face_color = (0, 0, 255)
             frame_count += 1
 
             elapsed = time.perf_counter() - start_time
@@ -83,6 +100,15 @@ def main():
                 2
             )
 
+            cv2.putText(
+                frame,
+                face_status,
+                (15, 90),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                face_color,
+                2
+            )
             cv2.imshow("DriveGuard", frame)
 
             key = cv2.waitKey(1) & 0xFF
@@ -93,9 +119,16 @@ def main():
     except KeyboardInterrupt:
         print("\nMonitoring interrupted.")
 
+    except (RuntimeError, OSError, ValueError) as error:
+        print(f"Error: {error}")
+
     finally:
         camera.release()
         cv2.destroyAllWindows()
+
+        if face_detector is not None:
+            face_detector.close()
+
         print("DriveGuard stopped.")
 
 
