@@ -5,6 +5,9 @@ import cv2
 
 from camera import Camera
 from face_detector import FaceDetector, draw_landmarks
+from metrics import calculate_eye_metrics, extract_blendshapes
+
+EAR_THRESHOLD = 0.15
 
 
 def main():
@@ -28,7 +31,7 @@ def main():
         print(f"Error: {error}")
         return
 
-        face_detector = None
+    face_detector = None
 
     try:
         face_detector = FaceDetector()
@@ -58,8 +61,66 @@ def main():
 
             result = face_detector.detect(frame)
 
+            blendshapes = extract_blendshapes(result)
+
+            blink_text = "Blink: N/A"
+            gaze_text = "Downward gaze: N/A"
+
+            if blendshapes:
+                blink_left = blendshapes["eyeBlinkLeft"]
+                blink_right = blendshapes["eyeBlinkRight"]
+
+                down_left = blendshapes["eyeLookDownLeft"]
+                down_right = blendshapes["eyeLookDownRight"]
+
+                blink_text = (
+                    f"Blink | L: {blink_left:.3f} | R: {blink_right:.3f}"
+                )
+
+                gaze_text = (
+                    f"Down | L: {down_left:.3f} | R: {down_right:.3f}"
+                )
+
+            eye_text = "EAR: N/A"
+            eye_status = "Eye state unavailable"
+            eye_color = (0, 255, 255)
+
             if result.face_landmarks:
                 landmarks = result.face_landmarks[0]
+
+                height, width = frame.shape[:2]
+
+                eye_metrics = calculate_eye_metrics(
+                    landmarks, width, height
+                )
+
+                if eye_metrics is not None:
+                    left_ear, right_ear, average_ear = eye_metrics
+
+                    eye_text = (
+                        f"EAR: {average_ear:.3f} | "
+                        f"L: {left_ear:.3f} | "
+                        f"R: {right_ear:.3f}"
+                    )
+
+                    left_closed = left_ear < EAR_THRESHOLD
+                    right_closed = right_ear < EAR_THRESHOLD
+
+                    if left_closed and right_closed:
+                        eye_status = "Eyes closed"
+                        eye_color = (0, 0, 255)
+
+                    elif left_closed:
+                        eye_status = "Left eye closed"
+                        eye_color = (0, 255, 255)
+
+                    elif right_closed:
+                        eye_status = "Right eye closed"
+                        eye_color = (0, 255, 255)
+
+                    else:
+                        eye_status = "Eyes open"
+                        eye_color = (0, 255, 0)
 
                 draw_landmarks(frame, landmarks)
 
@@ -69,6 +130,7 @@ def main():
             else:
                 face_status = "No face detected"
                 face_color = (0, 0, 255)
+
             frame_count += 1
 
             elapsed = time.perf_counter() - start_time
@@ -109,6 +171,47 @@ def main():
                 face_color,
                 2
             )
+
+            cv2.putText(
+                frame,
+                eye_text,
+                (15, 120),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2
+            )
+
+            cv2.putText(
+                frame,
+                eye_status,
+                (15, 150),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                eye_color,
+                2
+            )
+
+            cv2.putText(
+                frame,
+                blink_text,
+                (15, 180),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2
+            )
+
+            cv2.putText(
+                frame,
+                gaze_text,
+                (15, 210),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2
+            )
+
             cv2.imshow("DriveGuard", frame)
 
             key = cv2.waitKey(1) & 0xFF
