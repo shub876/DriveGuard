@@ -14,6 +14,3 @@ logs/
 
 # Environment variables
 .env
-
-# Downloaded AI models
-models/*.task
