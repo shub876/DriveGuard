@@ -26,6 +26,8 @@ class Camera:
     def get_fps(self):
         return self.capture.get(cv2.CAP_PROP_FPS)
 
+    def get_position_seconds(self):
+        return self.capture.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+
     def release(self):
         self.capture.release()
-        

@@ -3,11 +3,11 @@ import time
 
 import cv2
 
+from datetime import datetime
 from camera import Camera
 from face_detector import FaceDetector, draw_landmarks
 from metrics import calculate_eye_metrics, extract_blendshapes
-from eye_monitor import classify_eyes
-
+from eye_monitor import classify_eyes, EyeMonitor
 
 def main():
     parser = argparse.ArgumentParser(description="DriveGuard")
@@ -31,6 +31,7 @@ def main():
         return
 
     face_detector = None
+    eye_monitor = EyeMonitor()
 
     try:
         face_detector = FaceDetector()
@@ -57,6 +58,11 @@ def main():
                 else:
                     print("Error: Could not read frame.")
                 break
+
+            if args.video is not None:
+                timestamp = camera.get_position_seconds()
+            else:
+                timestamp = time.monotonic()
 
             result = face_detector.detect(frame)
 
@@ -125,6 +131,47 @@ def main():
             else:
                 face_status = "No face detected"
                 face_color = (0, 0, 255)
+
+            event = eye_monitor.update(
+                eye_status,
+                timestamp
+            )
+
+            if event is not None:
+                duration, interrupted = event
+
+                if args.video is not None:
+                    event_time = f"Video {timestamp:.2f}s"
+                else:
+                    event_time = datetime.now().strftime("%H:%M:%S")
+
+                if interrupted:
+                    print(
+                        f"[{event_time}] - Eye closure observed for "
+                        f"{duration:.2f}s before tracking was interrupted"
+                    )
+
+                else:
+                    print(
+                        f"[{event_time}] - Driver had eyes closed "
+                        f"for {duration:.2f}s"
+                    )
+
+            monitor_status = eye_monitor.status
+
+            if monitor_status == "CRITICAL":
+                monitor_color = (0, 0, 255)
+
+            elif monitor_status in (
+                "WARNING",
+                "UNCERTAIN",
+                "UNAVAILABLE",
+                "TIMING UNAVAILABLE"
+            ):
+                monitor_color = (0, 255, 255)
+
+            else:
+                monitor_color = (0, 255, 0)
 
             frame_count += 1
 
@@ -207,6 +254,36 @@ def main():
                 2
             )
 
+            cv2.putText(
+                frame,
+                f"Blinks: {eye_monitor.blink_count}",
+                (15, 240),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2
+            )
+
+            cv2.putText(
+                frame,
+                f"Eye closure: {eye_monitor.closed_seconds:.2f}s",
+                (15, 270),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (255, 255, 255),
+                2
+            )
+
+            cv2.putText(
+                frame,
+                f"Eye monitor: {monitor_status}",
+                (15, 300),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                monitor_color,
+                2
+            )
+
             cv2.imshow("DriveGuard", frame)
 
             key = cv2.waitKey(1) & 0xFF
@@ -221,6 +298,23 @@ def main():
         print(f"Error: {error}")
 
     finally:
+        event = eye_monitor.finish_closure(interrupted=True)
+
+        if event is not None:
+            duration, _ = event
+
+            if args.video is not None:
+                event_time = (
+                    f"Video {eye_monitor.last_timestamp:.2f}s"
+                )
+            else:
+                event_time = datetime.now().strftime("%H:%M:%S")
+
+            print(
+                f"[{event_time}] - Eye closure observed for "
+                f"{duration:.2f}s before monitoring stopped"
+            )
+
         camera.release()
         cv2.destroyAllWindows()
 
