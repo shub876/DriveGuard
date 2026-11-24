@@ -60,7 +60,7 @@ class Alarm:
 
         generate_sound(
             self.uncertain_sound,
-            [(650, 0.08), (0, 0.10), (650, 0.08)]
+            [(650, 0.08), (0, 0.30)]
         )
 
         self.current_status = None
@@ -105,7 +105,7 @@ class Alarm:
                 and not self.uncertain_played
                 and timestamp - self.uncertain_since >= UNCERTAIN_DELAY
             ):
-                self.play(self.uncertain_sound)
+                self.play(self.uncertain_sound, loop=True)
                 self.uncertain_played = True
 
     def close(self):
