@@ -1,8 +1,12 @@
 EAR_THRESHOLD = 0.15
 EAR_PARTIAL_THRESHOLD = 0.10
 
-BLINK_OPEN_THRESHOLD = 0.35
+BLINK_OPEN_THRESHOLD = 0.40
 BLINK_CLOSED_THRESHOLD = 0.65
+
+WINK_EAR_THRESHOLD = 0.20
+WINK_BLINK_THRESHOLD = 0.44
+WINK_ASYMMETRY_THRESHOLD = 0.10
 
 
 def classify_eye(ear, blink_score):
@@ -40,11 +44,31 @@ def classify_eyes(left_ear, right_ear, blendshapes):
     if "UNAVAILABLE" in (left_state, right_state):
         return "Eye state unavailable"
 
-    if "UNCERTAIN" in (left_state, right_state):
-        return "Eye state uncertain"
-
     if left_state == "CLOSED" and right_state == "CLOSED":
         return "Eyes closed"
+
+    blink_difference = left_blink - right_blink
+
+    if (
+        left_ear < WINK_EAR_THRESHOLD
+        and left_blink >= WINK_BLINK_THRESHOLD
+        and blink_difference >= WINK_ASYMMETRY_THRESHOLD
+        and right_state == "OPEN"
+        and right_blink <= BLINK_OPEN_THRESHOLD
+    ):
+        return "Left eye closed"
+
+    if (
+        right_ear < WINK_EAR_THRESHOLD
+        and right_blink >= WINK_BLINK_THRESHOLD
+        and blink_difference <= -WINK_ASYMMETRY_THRESHOLD
+        and left_state == "OPEN"
+        and left_blink <= BLINK_OPEN_THRESHOLD
+    ):
+        return "Right eye closed"
+
+    if "UNCERTAIN" in (left_state, right_state):
+        return "Eye state uncertain"
 
     if left_state == "CLOSED":
         return "Left eye closed"

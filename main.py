@@ -7,7 +7,7 @@ from datetime import datetime
 from camera import Camera
 from face_detector import FaceDetector, draw_landmarks
 from metrics import calculate_eye_metrics, extract_blendshapes
-from eye_monitor import classify_eyes, EyeMonitor, CRITICAL_DURATION
+from eye_monitor import classify_eye, classify_eyes, EyeMonitor, CRITICAL_DURATION
 from alarm import Alarm
 
 def main():
@@ -107,10 +107,20 @@ def main():
                 if eye_metrics is not None:
                     left_ear, right_ear, average_ear = eye_metrics
 
+                    left_state = classify_eye(
+                        left_ear,
+                        blendshapes.get("eyeBlinkLeft")
+                    )
+
+                    right_state = classify_eye(
+                        right_ear,
+                        blendshapes.get("eyeBlinkRight")
+                    )
+
                     eye_text = (
                         f"EAR: {average_ear:.3f} | "
-                        f"L: {left_ear:.3f} | "
-                        f"R: {right_ear:.3f}"
+                        f"L: {left_ear:.3f} ({left_state}) | "
+                        f"R: {right_ear:.3f} ({right_state})"
                     )
 
                     eye_status = classify_eyes(
