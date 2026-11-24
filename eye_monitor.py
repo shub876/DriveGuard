@@ -79,7 +79,7 @@ def classify_eyes(left_ear, right_ear, blendshapes):
     return "Eyes open"
 
 
-MIN_BLINK_DURATION = 0.08
+MIN_BLINK_DURATION = 0.03
 MAX_BLINK_DURATION = 0.40
 
 WARNING_DURATION = 2.00
